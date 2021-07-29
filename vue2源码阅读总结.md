@@ -1,34 +1,36 @@
 # vue2源码阅读总结
 
-- [1. 生命周期](#1-生命周期)
-  - [1.1. Vue脚本执行](#11-vue脚本执行)
-  - [1.2. 在`beforeCreate`之前](#12-在beforecreate之前)
-  - [1.3. `beforeCreate`到`created`之间](#13-beforecreate到created之间)
-  - [1.4. `created`到`beforeMount`之间](#14-created到beforemount之间)
-  - [1.5. `beforeMount`到`mounted`之间](#15-beforemount到mounted之间)
-  - [1.6. `beforeUpdate`之前](#16-beforeupdate之前)
-  - [1.7. `beforeUpdate`到`updated`之间](#17-beforeupdate到updated之间)
-  - [1.8. `beforeDestroy`之前](#18-beforedestroy之前)
-  - [1.9. `beforeDestroy`到`destroyed`之间](#19-beforedestroy到destroyed之间)
-  - [1.10. `destroyed`之后](#110-destroyed之后)
-  - [1.11. `activated`之前](#111-activated之前)
-  - [1.12. `deactivated`之前](#112-deactivated之前)
-- [2. 编译&渲染](#2-编译渲染)
-- [3. 双向绑定](#3-双向绑定)
-- [4. 时间片](#4-时间片)
-- [5. VNode的Diff算法](#5-vnode的diff算法)
-- [6. 服务端渲染](#6-服务端渲染)
-  - [业务项目的SSRClient端的webpack入口JS脚本](#业务项目的ssrclient端的webpack入口js脚本)
-  - [业务项目的SSRServer端的webpack入口JS脚本](#业务项目的ssrserver端的webpack入口js脚本)
-  - [`vue-loader`和`vue-style-loader`](#vue-loader和vue-style-loader)
-  - [`VueSSRClientPlugin` webpack插件](#vuessrclientplugin-webpack插件)
-  - [`VueSSRServerPlugin` webpack插件](#vuessrserverplugin-webpack插件)
-  - [`vue-ssr-client-manifest.json`文件](#vue-ssr-client-manifestjson文件)
-  - [`vue-ssr-server-bundle.json`文件](#vue-ssr-server-bundlejson文件)
-  - [`vue-server-renderer`的入口文件](#vue-server-renderer的入口文件)
-  - [`vue-server-renderer`的`createBundleRenderer` API](#vue-server-renderer的createbundlerenderer-api)
-  - [`vue-server-renderer`的`createRenderer` API](#vue-server-renderer的createrenderer-api)
-- [7. 目录结构](#7-目录结构)
+- [vue2源码阅读总结](#vue2源码阅读总结)
+  - [1. 生命周期](#1-生命周期)
+    - [1.1. Vue脚本执行](#11-vue脚本执行)
+    - [1.2. 在`beforeCreate`之前](#12-在beforecreate之前)
+    - [1.3. `beforeCreate`到`created`之间](#13-beforecreate到created之间)
+    - [1.4. `created`到`beforeMount`之间](#14-created到beforemount之间)
+    - [1.5. `beforeMount`到`mounted`之间](#15-beforemount到mounted之间)
+    - [1.6. `beforeUpdate`之前](#16-beforeupdate之前)
+    - [1.7. `beforeUpdate`到`updated`之间](#17-beforeupdate到updated之间)
+    - [1.8. `beforeDestroy`之前](#18-beforedestroy之前)
+    - [1.9. `beforeDestroy`到`destroyed`之间](#19-beforedestroy到destroyed之间)
+    - [1.10. `destroyed`之后](#110-destroyed之后)
+    - [1.11. `activated`之前](#111-activated之前)
+    - [1.12. `deactivated`之前](#112-deactivated之前)
+  - [2. 编译&渲染](#2-编译渲染)
+  - [3. 双向绑定](#3-双向绑定)
+  - [4. 时间片](#4-时间片)
+  - [5. VNode的Diff算法](#5-vnode的diff算法)
+  - [6. KeepAlive](#6-keepalive)
+  - [7. 服务端渲染](#7-服务端渲染)
+    - [7.1. 业务项目的SSRClient端的webpack入口JS脚本](#71-业务项目的ssrclient端的webpack入口js脚本)
+    - [7.2. 业务项目的SSRServer端的webpack入口JS脚本](#72-业务项目的ssrserver端的webpack入口js脚本)
+    - [7.3. `vue-loader`和`vue-style-loader`](#73-vue-loader和vue-style-loader)
+    - [7.4. `VueSSRClientPlugin` webpack插件](#74-vuessrclientplugin-webpack插件)
+    - [7.5. `VueSSRServerPlugin` webpack插件](#75-vuessrserverplugin-webpack插件)
+    - [7.6. `vue-ssr-client-manifest.json`文件](#76-vue-ssr-client-manifestjson文件)
+    - [7.7. `vue-ssr-server-bundle.json`文件](#77-vue-ssr-server-bundlejson文件)
+    - [7.8. `vue-server-renderer`的入口文件](#78-vue-server-renderer的入口文件)
+    - [7.9. `vue-server-renderer`的`createBundleRenderer` API](#79-vue-server-renderer的createbundlerenderer-api)
+    - [7.10. `vue-server-renderer`的`createRenderer` API](#710-vue-server-renderer的createrenderer-api)
+  - [8. 目录结构](#8-目录结构)
 
 ## 1. 生命周期
 
@@ -464,7 +466,33 @@ function updateChildren(parentElm, oldCh, newCh, insertedVnodeQueue, removeOnly)
 }
 ```
 
-## 6. 服务端渲染
+## 6. KeepAlive
+
+`keep-alive`为抽象组件，在实例内部有`cache`和`keys`两个属性，分别存储被缓存的组件和组件的`key`。会根据组件的`include`和`exclude`属性决定组件是否被缓存。组件的`render`函数的功能如下：
+
+1. 取组件默认插槽的第一个组件（插槽内只能有一个子元素被渲染）对应的VNode节点（组件的占位节点）
+2. 取组件名，以及`include`和`exclude`属性决定是否缓存。如果不缓存，返回上述VNode节点即可
+3. 取上述VNode节点的`key`，如果没有则根据上述VNode节点对应的实例`id`和`tag`生成`key`
+4. 如果`key`已经被缓存，这取缓存的组件实例替换上述VNode节点的组件实例
+5. 否则，缓存上述VNode节点，根据`max`判断是否需要清理旧的缓存
+6. 置上述VNode节点的`keepAlive`属性为true
+7. 返回上述VNode或插槽的第一个节点
+
+VNode节点的`keepAlive`属性的使用场景：
+
+1. 在创建VNode节点（占位节点）对应的组件实例时
+   1. 执行VNode节点的`init`钩子
+   2. 存在VNode节点对应的组件实例时，激活组件（执行组件的`activate`钩子，插入DOM树）
+2. VNode的`init`钩子
+   1. 如果组件实例未被销毁，且已缓存，则执行VNode的`prepatch`钩子（更新子组件实例）
+   2. 否则，创建组件实例并挂载
+3. VNode的`insert`钩子
+   1. 如果VNode节点已缓存且已挂载，则给VNode节点对应的组件实例置活跃标志，加入到活跃组件队列，该队列会在下一个时钟周期激活组件树（递归调用，置组件实例激活标志，调用`activated`钩子）
+   2. 如果VNode节点已缓存且未挂载，激活组件树。
+4. VNode的`destroy`钩子
+   1. 如果组件实例未挂载且VNode已缓存，使组件树失活（递归调用，置组件实例失活标志，调用`deactivated`钩子）
+
+## 7. 服务端渲染
 
 服务端渲染涉及到的：vue源码的server模块、vue源码目标平台的server模块、vue源码中的SSR的webpack插件（ClientPlugin和ServerPlugin）、vue-loader、vue-style-loader
 
@@ -477,7 +505,7 @@ SSR的流程：
 
 以[Vue SSR官网](https://ssr.vuejs.org/zh/)的指南为例对上述过程做如下说明：
 
-### 业务项目的SSRClient端的webpack入口JS脚本
+### 7.1. 业务项目的SSRClient端的webpack入口JS脚本
 
 主要流程：
 
@@ -486,7 +514,7 @@ SSR的流程：
 3. 路由加载完成后，添加Router的`beforeResolve`钩子处理下一个组件加载前的异步数据获取，挂载Vue实例
 4. 用Vue mixin插入Router的`beforeRouteUpdate`钩子处理组件复用时的异步数据获取
 
-### 业务项目的SSRServer端的webpack入口JS脚本
+### 7.2. 业务项目的SSRServer端的webpack入口JS脚本
 
 主要流程：
 
@@ -501,13 +529,13 @@ SSR的流程：
    4. 调用匹配到的组件的获取异步数据的方法，在该方法内会将获取到的远程数据保存到Store里
    5. 将Store中的`state`插入到`context`中的`state`属性，`vue-server-renderer`会将`context`中的`state`的值插入到`window.__INITIAL_STATE__`中
 
-### `vue-loader`和`vue-style-loader`
+### 7.3. `vue-loader`和`vue-style-loader`
 
 `vue-loader`在处理各模块代码的过程中，会插入一段函数，该函数的作用是以`__VUE_SSR_CONTEXT__`为上下文对象，并且调用该对象的`_registeredComponents` API保存当前正在处理的模块的编号（模块地址的hash值）。详见`vue-router`的`lib/runtime/componentNormalizer.js`和`lib/index.js`文件。
 
 `vue-style-loader`在处理CSS模块代码的过程中，会插入一段函数，该函数的作用是以`__VUE_SSR_CONTEXT__`为上下文对象，将CSS文件的内容装换成对象，存放到上下文对象的`_styles`属性中。详见`vue-style-loader`的`lib/addStylesServer.js`和`index.js`文件。
 
-### `VueSSRClientPlugin` webpack插件
+### 7.4. `VueSSRClientPlugin` webpack插件
 
 该插件在Vue源码的`packages/vue-server-renderer/client-plugin.js`文件中实现。
 
@@ -519,7 +547,7 @@ SSR的流程：
    2. 维护“模块的编号”（在`vue-loader`中通过`__VUE_SSR_CONTEXT__._registeredComponents` API注册的模块编号）与相关资源的映射关系
    3. 将SSR Client需要输出的JSON文件（默认是`vue-ssr-client-manifest.json`文件）插入到资源列表中
 
-### `VueSSRServerPlugin` webpack插件
+### 7.5. `VueSSRServerPlugin` webpack插件
 
 该插件在Vue源码的`packages/vue-server-renderer/server-plugin.js`文件中实现。
 
@@ -531,7 +559,7 @@ SSR的流程：
    2. 删除资源列表内的内容
    3. 添加SSR Server需要输出的JSON文件（默认是`vue-ssr-server-bundle.json`文件）插入到资源列表中
 
-### `vue-ssr-client-manifest.json`文件
+### 7.6. `vue-ssr-client-manifest.json`文件
 
 文件的内容：
 
@@ -567,7 +595,7 @@ SSR的流程：
 }
 ```
 
-### `vue-ssr-server-bundle.json`文件
+### 7.7. `vue-ssr-server-bundle.json`文件
 
 文件的内容：
 
@@ -587,11 +615,11 @@ SSR的流程：
 }
 ```
 
-### `vue-server-renderer`的入口文件
+### 7.8. `vue-server-renderer`的入口文件
 
 以Web平台为例，`vue-server-renderer`的入口文件为`platforms/web/entry-server-render.js`。该模块导出两个函数：`createRender`和`createBundleRenderer`。
 
-### `vue-server-renderer`的`createBundleRenderer` API
+### 7.9. `vue-server-renderer`的`createBundleRenderer` API
 
 `createBundleRenderer` API是在入口文件内，调用`server/bundle-renderer/create-bundle-renderer.js`的`createBundleRendererCreator`函数，入参为`createRender`。
 
@@ -663,7 +691,7 @@ function compileModule(files, basedir, runInNewContext) { // files为文件名�
 }
 ```
 
-### `vue-server-renderer`的`createRenderer` API
+### 7.10. `vue-server-renderer`的`createRenderer` API
 
 `createRenderer` API是在入口文件内，调用`server/create-renderer.js`的`createRenderer`函数，传入用户自定义的配置和平台适配的配置（如模块、指令等）。
 
@@ -746,7 +774,7 @@ function renderNode(node, isRoot, context) {
 }
 ```
 
-## 7. 目录结构
+## 8. 目录结构
 
 ```javascript
 vue                                                   
